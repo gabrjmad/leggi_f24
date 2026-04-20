@@ -8,58 +8,115 @@ st.set_page_config(page_title="Estrazione F24", layout="wide")
 st.markdown(
     """
     <style>
-    /* Sfondo blu della pagina */
+    /* Sfondo blu acceso */
     .stApp {
-        background-color: #0f172a; /* blu scuro tipo slate */
-        color: #e5e7eb;           /* testo chiaro */
+        background: radial-gradient(circle at top left, #3b82f6 0, #0f172a 45%, #020617 100%);
+        color: #e5e7eb;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    /* Titolo */
-    h1, h2, h3 {
-        color: #e5e7eb;
-    }
-
-    /* Container principale con bordo leggero */
+    /* Container centrale "card" */
     .main-container {
-        background-color: #111827;
-        padding: 1.5rem;
-        border-radius: 0.75rem;
-        border: 1px solid #1f2937;
+        background-color: rgba(15, 23, 42, 0.92);
+        padding: 1.75rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(59, 130, 246, 0.35);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
     }
 
-    /* Bottoni viola */
+    /* Header compatta, solo testo + bottoni */
+    .header-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .header-title-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .header-title-left h1 {
+        font-size: 1.6rem;
+        margin: 0;
+        color: #f9fafb;
+    }
+
+    .header-subtitle {
+        font-size: 0.9rem;
+        color: #cbd5f5;
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    /* Bottoni moderni */
     .stButton>button {
-        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        color: white;
+        background: linear-gradient(135deg, #6366f1, #3b82f6);
+        color: #f9fafb;
         border-radius: 999px;
-        padding: 0.4rem 1.4rem;
+        padding: 0.45rem 1.6rem;
         border: none;
         font-weight: 600;
+        font-size: 0.9rem;
         cursor: pointer;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.45);
     }
     .stButton>button:hover {
-        background: linear-gradient(135deg, #a855f7, #8b5cf6);
+        background: linear-gradient(135deg, #818cf8, #60a5fa);
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.65);
     }
 
-    /* File uploader box */
+    /* Upload box */
     .stFileUploader {
         background-color: #020617;
-        padding: 1rem;
+        padding: 0.9rem;
         border-radius: 0.75rem;
-        border: 1px dashed #4b5563;
+        border: 1px dashed rgba(148, 163, 184, 0.7);
     }
 
-    /* Dataframe styling */
+    /* Messaggi (success, warning, info) */
+    .stAlert {
+        border-radius: 0.75rem;
+    }
+
+    /* Tabella: bordi e colori in tema */
+    .dataframe {
+        border-radius: 0.75rem !important;
+        overflow: hidden !important;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+    }
+    .dataframe table {
+        border-collapse: collapse !important;
+        width: 100%;
+        font-size: 0.88rem;
+    }
+    .dataframe thead tr {
+        background-color: #0f172a !important;
+        color: #e5e7eb !important;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.8);
+    }
+    .dataframe thead th {
+        padding: 0.55rem 0.75rem !important;
+        white-space: nowrap;
+    }
+    .dataframe tbody tr {
+        border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+    }
     .dataframe tbody tr:nth-child(odd) {
         background-color: #020617 !important;
     }
     .dataframe tbody tr:nth-child(even) {
-        background-color: #111827 !important;
+        background-color: #02081f !important;
     }
-    .dataframe thead tr {
-        background-color: #1f2937 !important;
+    .dataframe tbody td {
+        padding: 0.4rem 0.75rem !important;
         color: #e5e7eb !important;
+    }
+    .dataframe tbody tr:hover {
+        background-color: rgba(37, 99, 235, 0.25) !important;
     }
     </style>
     """,
@@ -68,8 +125,20 @@ st.markdown(
 
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-st.title("Estrazione dati F24 da PDF")
-st.write("Carica uno o più PDF e ottieni i dati strutturati per ogni riga valida (codice fiscale, nominativo, ecc.).")
+# Header compatta
+st.markdown(
+    """
+    <div class="header-title">
+        <div class="header-title-left">
+            <h1>Estrazione dati F24 da PDF</h1>
+            <p class="header-subtitle">
+                Carica uno o più file PDF e visualizza i dati strutturati per ogni riga con codice fiscale.
+            </p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 uploaded_files = st.file_uploader(
     "Carica uno o più PDF",
@@ -78,7 +147,7 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    st.success(f"Hai caricato {len(uploaded_files)} file. Premi **Estrai dati** per procedere.")
+    st.success(f"Hai caricato {len(uploaded_files)} file. Quando sei pronto, clicca su **Estrai dati**.")
 
     if st.button("Estrai dati da tutti i PDF"):
         all_rows = []
@@ -116,7 +185,6 @@ if uploaded_files:
                     nr[c] = r.get(c, "")
                 normalized_rows.append(nr)
 
-            # Tabella più moderna: usiamo st.dataframe con altezza dinamica
             st.dataframe(
                 normalized_rows,
                 use_container_width=True,
