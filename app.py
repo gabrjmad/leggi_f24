@@ -7,50 +7,44 @@ from parser_pdf import estrai_righe_validi
 
 st.set_page_config(page_title="Estrai il tuo PDF", layout="wide")
 
-# CSS: niente box in alto, layout centrato, riepilogo con sfondo chiaro
+# Stile leggero ma leggibile
 st.markdown(
     """
     <style>
     .stApp {
-        background: radial-gradient(circle at top, #2563eb 0, #0f172a 55%);
-        color: #0f172a;
+        background: radial-gradient(circle at top, #2563eb 0, #0f172a 60%);
+        color: #e5e7eb;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-
-    .center-wrapper {
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: 100vh;
-        padding-top: 3rem;
-    }
-
-    .card {
-        background-color: #f9fafb;
-        padding: 2rem 2.5rem;
+    .main-container {
+        background-color: rgba(15, 23, 42, 0.96);
+        padding: 1.5rem 2rem;
         border-radius: 1rem;
-        border: 1px solid rgba(148, 163, 184, 0.7);
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
-        max-width: 800px;
-        width: 100%;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+        max-width: 900px;
+        margin: 2rem auto;
     }
-
     .app-title {
         font-size: 1.8rem;
-        margin-bottom: 0.75rem;
-        color: #0f172a;
+        margin-bottom: 0.5rem;
+        color: #f9fafb;
         font-weight: 700;
         text-align: center;
     }
-
     .app-subtitle {
         font-size: 0.95rem;
-        color: #4b5563;
+        color: #cbd5f5;
         text-align: center;
         margin-bottom: 1.5rem;
     }
-
-    /* Bottoni centrali */
+    .stFileUploader {
+        background-color: #020617;
+        padding: 1rem;
+        border-radius: 0.9rem;
+        border: 1px dashed rgba(148, 163, 184, 0.9);
+        color: #e5e7eb;
+    }
     .stButton>button {
         background: linear-gradient(135deg, #6366f1, #3b82f6);
         color: #f9fafb;
@@ -66,17 +60,6 @@ st.markdown(
         background: linear-gradient(135deg, #818cf8, #60a5fa);
         box-shadow: 0 10px 25px rgba(59, 130, 246, 0.7);
     }
-
-    /* File uploader grande e centrato */
-    .stFileUploader {
-        background-color: #e5e7eb;
-        padding: 1rem;
-        border-radius: 0.9rem;
-        border: 1px dashed rgba(107, 114, 128, 0.9);
-        color: #111827;
-    }
-
-    /* Riepilogo con sfondo schiarito */
     .summary-box {
         background-color: #f3f4f6;
         border-radius: 0.75rem;
@@ -88,11 +71,11 @@ st.markdown(
         font-size: 0.8rem;
         color: #111827;
     }
-
     .summary-title {
         font-size: 0.95rem;
         font-weight: 600;
-        color: #111827;
+        color: #e5e7eb;
+        margin-top: 1rem;
         margin-bottom: 0.5rem;
     }
     </style>
@@ -100,7 +83,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="center-wrapper"><div class="card">', unsafe_allow_html=True)
+st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
 st.markdown('<div class="app-title">Estrai il tuo PDF</div>', unsafe_allow_html=True)
 st.markdown(
@@ -108,19 +91,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Upload PDF centrato
+# 1) Upload PDF
 pdf_files = st.file_uploader(
     "Carica uno o più PDF",
     type=["pdf"],
     accept_multiple_files=True
 )
 
+# 2) Bottone per estrarre
 st.write("")
-st.write("")
-
-# Bottone per estrarre, al centro
-extract_col = st.columns(3)
-with extract_col[1]:
+center_col = st.columns(3)
+with center_col[1]:
     estrai_clicked = st.button("Estrai dati dai PDF")
 
 if estrai_clicked:
@@ -138,13 +119,12 @@ if estrai_clicked:
         else:
             st.success(f"Estrazione completata! Trovate {len(all_rows)} righe valide.")
 
-            # Salva in session_state per conferma e generazione Excel
+            # Salva in session_state per fase successiva
             st.session_state["extracted_rows"] = all_rows
 
-            # Riepilogo visibile con sfondo chiaro
+            # Riepilogo
             st.markdown('<div class="summary-title">Riepilogo righe che verranno inserite nel file Excel:</div>', unsafe_allow_html=True)
             st.markdown('<div class="summary-box">', unsafe_allow_html=True)
-
             for r in all_rows:
                 line = (
                     f"Anno={r.get('anno', '')} | "
@@ -156,20 +136,16 @@ if estrai_clicked:
                     f"Tipo={r.get('tipo_f24', '')}"
                 )
                 st.text(line)
-
             st.markdown('</div>', unsafe_allow_html=True)
 
-# Se abbiamo righe estratte, mostra bottone Conferma
+# 3) Conferma e scarica
 if "extracted_rows" in st.session_state:
     st.write("")
-    st.write("")
-
     confirm_col = st.columns(3)
     with confirm_col[1]:
         conferma_clicked = st.button("Conferma")
 
     if conferma_clicked:
-        # Costruisci DataFrame con intestazione stile Cartel1
         rows = st.session_state["extracted_rows"]
         df = pd.DataFrame(rows)
 
@@ -183,7 +159,6 @@ if "extracted_rows" in st.session_state:
             "Tipo": df.get("tipo_f24", ""),
         })
 
-        # Scrivi il nuovo Excel in memoria
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             df_excel.to_excel(writer, sheet_name="Foglio1", index=False)
@@ -191,7 +166,6 @@ if "extracted_rows" in st.session_state:
 
         st.success("File Excel generato. Ora puoi scaricarlo.")
 
-        # Bottone di download
         download_col = st.columns(3)
         with download_col[1]:
             st.download_button(
@@ -201,4 +175,4 @@ if "extracted_rows" in st.session_state:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
 
-st.markdown("</div></div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
