@@ -58,7 +58,7 @@ def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
 
     with pdfplumber.open(pdf_fp) as pdf:
         for page in pdf.pages:
-            words = pdf.pages[page.page_number - 1].extract_words()
+            words = page.extract_words()
 
             righe = {}
             for w in words:
@@ -68,6 +68,9 @@ def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
             for _, parole in righe.items():
                 parole_ordinate = sorted(parole, key=lambda x: x["x0"])
                 tokens = [p["text"] for p in parole_ordinate]
+                if not tokens:
+                    continue
+
                 first_word = tokens[0]
 
                 if not is_cf_like(first_word):
