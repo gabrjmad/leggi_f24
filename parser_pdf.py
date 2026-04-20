@@ -1,5 +1,6 @@
 import pdfplumber
 import re
+from typing import List, Dict, Union, IO
 
 def is_cf_like(text: str) -> bool:
     """
@@ -11,14 +12,62 @@ def is_cf_like(text: str) -> bool:
     return len(text) in (11, 16)
 
 
-def estrai_righe_validi(pdf_fp):
+def parse_riga_tokens(tokens: List[str]) -> Dict[str, str]:
+    """
+    tokens: lista di parole della riga, già ordinate da sinistra a destra.
+    Ritorna un dict strutturato con i campi richiesti.
+    Si assume il formato:
+    CF NOME COGNOME ... 0600 B 55418 2026 04 01 01 IT 59 P 01030 03005 000000454165 762,04
+    """
+    if not tokens:
+        return {}
+
+    cf = tokens[0]
+
+    # Trova l'indice in cui inizia il blocco numerico "0600" (gruppo)
+    # cioè il primo token dopo il CF che è tutto numerico
+    idx = 1
+    while idx < len(tokens) and not re.fullmatch(r"\d+", tokens[idx]):
+        idx += 1
+
+    # tutto ciò che sta tra CF e il primo blocco numerico è nominativo
+    nominativo = " ".join(tokens[1:idx]).strip()
+
+    # ora ci aspettiamo i campi in ordine fisso
+    # idx -> gruppo di riferimento (0600)
+    gruppo_rif = tokens[idx] if idx < len(tokens) else ""
+    regime_contabile = tokens[idx + 1] if idx + 1 < len(tokens) else ""
+    codice_ditta = tokens[idx + 2] if idx + 2 < len(tokens) else ""
+    anno = tokens[idx + 3] if idx + 3 < len(tokens) else ""
+    tipo_f24 = tokens[idx + 4] if idx + 4 < len(tokens) else ""
+    quantita_f24 = tokens[idx + 5] if idx + 5 < len(tokens) else ""
+    documenti_contenuti = tokens[idx + 6] if idx + 6 < len(tokens) else ""
+
+    # saldo = ultimo token che assomiglia a importo tipo 762,04
+    saldo = ""
+    for t in reversed(tokens):
+        if re.fullmatch(r"\d{1,3}(\.\d{3})*,\d{2}", t) or re.fullmatch(r"\d+,\d{2}", t):
+            saldo = t
+            break
+
+    return {
+        "codice_fiscale": cf,
+        "nominativo": nominativo,
+        "gruppo_riferimento": gruppo_rif,
+        "regime_contabile": regime_contabile,
+        "codice_ditta": codice_ditta,
+        "anno": anno,
+        "tipo_f24": tipo_f24,
+        "quantita_f24_inviati": quantita_f24,
+        "documenti_contenuti": documenti_contenuti,
+        "saldo": saldo,
+    }
+
+
+def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
     """
     pdf_fp può essere un path (stringa) o un file-like object (es. Streamlit upload).
-    Restituisce una lista di dict con info estratte per riga.
-    Per ora:
-      - codice fiscale (prima parola)
-      - nominativo (colonna successiva)
-      - riga intera come testo
+    Restituisce una lista di dict con tutti i campi estratti per ogni riga valida.
     """
     risultati = []
 
@@ -33,32 +82,23 @@ def estrai_righe_validi(pdf_fp):
                 righe.setdefault(top, []).append(w)
 
             for top, parole in righe.items():
+                # ordina parole da sinistra a destra
                 parole_ordinate = sorted(parole, key=lambda x: x["x0"])
-                first_word = parole_ordinate[0]["text"]
+                tokens = [p["text"] for p in parole_ordinate]
+                first_word = tokens[0]
 
-                if is_cf_like(first_word):
-                    # Ricostruisci intera riga
-                    riga_testo = " ".join(p["text"] for p in parole_ordinate)
+                # filtro per CF/p.IVA
+                if not is_cf_like(first_word):
+                    continue
 
-                    # Come esempio semplice: il nominativo è dopo il CF
-                    # (per il tuo layout: CF, poi uno o più token di nominativo
-                    #  fino a 'Cod.Contab.'; qui per ora prendiamo solo la parola successiva)
-                    nominativo_grezzo = []
-                    if len(parole_ordinate) > 1:
-                        # per ora prendiamo tutte le parole fino a incontrare qualcosa che
-                        # sembra un codice numerico (tipo '0605')
-                        for p in parole_ordinate[1:]:
-                            if re.fullmatch(r"\d{3,}", p["text"]):
-                                break
-                            nominativo_grezzo.append(p["text"])
-                    nominativo = " ".join(nominativo_grezzo).strip()
+                # parsa la riga in colonne
+                campi = parse_riga_tokens(tokens)
 
-                    risultati.append({
-                        "page": page.page_number,
-                        "y_top": top,
-                        "codice_fiscale": first_word,
-                        "nominativo": nominativo,
-                        "riga_completa": riga_testo,
-                    })
+                # aggiungi info di contesto (pagina, posizioni, riga originale)
+                campi["pagina"] = page.page_number
+                campi["y_top"] = top
+                campi["riga_completa"] = " ".join(tokens)
+
+                risultati.append(campi)
 
     return risultati
