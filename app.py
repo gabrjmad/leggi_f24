@@ -94,17 +94,6 @@ st.markdown(
         background: linear-gradient(135deg, #818cf8, #60a5fa);
         box-shadow: 0 10px 25px rgba(59, 130, 246, 0.7);
     }
-    .summary-box {
-        background-color: #f3f4f6;
-        border-radius: 0.75rem;
-        padding: 1rem 1.2rem;
-        border: 1px solid rgba(148, 163, 184, 0.7);
-        max-height: 260px;
-        overflow-y: auto;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        font-size: 0.8rem;
-        color: #111827;
-    }
     .summary-title {
         font-size: 0.95rem;
         font-weight: 600;
@@ -167,25 +156,12 @@ if estrai_clicked:
             # Salva in session_state per fase successiva
             st.session_state["extracted_rows"] = all_rows
 
-            # Riepilogo: solo numero + elenco
+            # Solo titolo e numero righe
             st.markdown('<div class="summary-title">Righe individuate</div>', unsafe_allow_html=True)
             st.markdown(
                 f'<div class="summary-count">Totale: <strong>{len(all_rows)}</strong></div>',
                 unsafe_allow_html=True,
             )
-            st.markdown('<div class="summary-box">', unsafe_allow_html=True)
-            for r in all_rows:
-                line = (
-                    f"Anno={r.get('anno', '')} | "
-                    f"Cod_Fisc={r.get('codice_fiscale', '')} | "
-                    f"Denominazione={r.get('nominativo', '')} | "
-                    f"Gruppo={r.get('gruppo_riferimento', '')} | "
-                    f"Regime={r.get('regime_contabile', '')} | "
-                    f"Cod_ditta={r.get('codice_ditta', '')} | "
-                    f"Tipo={r.get('tipo_f24', '')}"
-                )
-                st.text(line)
-            st.markdown('</div>', unsafe_allow_html=True)
 
 # 3) Genera subito e scarica (senza tasto Conferma)
 if "extracted_rows" in st.session_state:
