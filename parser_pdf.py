@@ -58,14 +58,14 @@ def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
 
     with pdfplumber.open(pdf_fp) as pdf:
         for page in pdf.pages:
-            words = page.extract_words()
+            words = pdf.pages[page.page_number - 1].extract_words()
 
             righe = {}
             for w in words:
                 top = round(w["top"])
                 righe.setdefault(top, []).append(w)
 
-            for top, parole in righe.items():
+            for _, parole in righe.items():
                 parole_ordinate = sorted(parole, key=lambda x: x["x0"])
                 tokens = [p["text"] for p in parole_ordinate]
                 first_word = tokens[0]
