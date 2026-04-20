@@ -1,198 +1,210 @@
+import io
+import pandas as pd
 import streamlit as st
 from parser_pdf import estrai_righe_validi
 
-# Config pagina
-st.set_page_config(page_title="Estrazione F24", layout="wide")
+st.set_page_config(page_title="PDF → Excel F24", layout="wide")
 
-# CSS personalizzato per stile moderno
+# CSS per UI centrata, colori leggibili
 st.markdown(
     """
     <style>
-    /* Sfondo blu acceso */
     .stApp {
-        background: radial-gradient(circle at top left, #3b82f6 0, #0f172a 45%, #020617 100%);
+        background: radial-gradient(circle at top, #1d4ed8 0, #020617 55%);
         color: #e5e7eb;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    /* Container centrale "card" */
-    .main-container {
-        background-color: rgba(15, 23, 42, 0.92);
-        padding: 1.75rem;
-        border-radius: 1rem;
-        border: 1px solid rgba(59, 130, 246, 0.35);
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+    .center-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
     }
 
-    /* Header compatta, solo testo + bottoni */
-    .header-title {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
+    .card {
+        background-color: rgba(15, 23, 42, 0.96);
+        padding: 2rem 2.5rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+        max-width: 900px;
+        width: 100%;
+        margin-top: 2rem;
+    }
+
+    .app-title {
+        font-size: 1.7rem;
+        margin-bottom: 0.3rem;
+        color: #f9fafb;
+        font-weight: 650;
+        text-align: center;
+    }
+
+    .app-subtitle {
+        font-size: 0.95rem;
+        color: #c7d2fe;
+        text-align: center;
         margin-bottom: 1.5rem;
     }
 
-    .header-title-left {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .header-title-left h1 {
-        font-size: 1.6rem;
-        margin: 0;
-        color: #f9fafb;
-    }
-
-    .header-subtitle {
-        font-size: 0.9rem;
-        color: #cbd5f5;
-        margin: 0;
-        opacity: 0.9;
-    }
-
-    /* Bottoni moderni */
+    /* Bottoni */
     .stButton>button {
         background: linear-gradient(135deg, #6366f1, #3b82f6);
         color: #f9fafb;
         border-radius: 999px;
-        padding: 0.45rem 1.6rem;
+        padding: 0.45rem 1.7rem;
         border: none;
         font-weight: 600;
         font-size: 0.9rem;
         cursor: pointer;
-        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.45);
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
     }
     .stButton>button:hover {
         background: linear-gradient(135deg, #818cf8, #60a5fa);
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.65);
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.7);
     }
 
-    /* Upload box */
+    /* File uploader leggibile */
     .stFileUploader {
         background-color: #020617;
         padding: 0.9rem;
         border-radius: 0.75rem;
-        border: 1px dashed rgba(148, 163, 184, 0.7);
+        border: 1px dashed rgba(148, 163, 184, 0.8);
+        color: #e5e7eb;
     }
 
-    /* Messaggi (success, warning, info) */
-    .stAlert {
-        border-radius: 0.75rem;
-    }
-
-    /* Tabella: bordi e colori in tema */
-    .dataframe {
-        border-radius: 0.75rem !important;
-        overflow: hidden !important;
-        border: 1px solid rgba(148, 163, 184, 0.5);
-    }
-    .dataframe table {
-        border-collapse: collapse !important;
-        width: 100%;
-        font-size: 0.88rem;
-    }
-    .dataframe thead tr {
-        background-color: #0f172a !important;
+    /* Expander */
+    .streamlit-expanderHeader {
+        font-size: 0.9rem;
         color: #e5e7eb !important;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.8);
-    }
-    .dataframe thead th {
-        padding: 0.55rem 0.75rem !important;
-        white-space: nowrap;
-    }
-    .dataframe tbody tr {
-        border-bottom: 1px solid rgba(31, 41, 55, 0.9);
-    }
-    .dataframe tbody tr:nth-child(odd) {
-        background-color: #020617 !important;
-    }
-    .dataframe tbody tr:nth-child(even) {
-        background-color: #02081f !important;
-    }
-    .dataframe tbody td {
-        padding: 0.4rem 0.75rem !important;
-        color: #e5e7eb !important;
-    }
-    .dataframe tbody tr:hover {
-        background-color: rgba(37, 99, 235, 0.25) !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="main-container">', unsafe_allow_html=True)
+st.markdown('<div class="center-wrapper"><div class="card">', unsafe_allow_html=True)
 
-# Header compatta
+st.markdown('<div class="app-title">PDF → Excel F24</div>', unsafe_allow_html=True)
 st.markdown(
-    """
-    <div class="header-title">
-        <div class="header-title-left">
-            <h1>Estrazione dati F24 da PDF</h1>
-            <p class="header-subtitle">
-                Carica uno o più file PDF e visualizza i dati strutturati per ogni riga con codice fiscale.
-            </p>
-        </div>
-    </div>
-    """,
+    '<div class="app-subtitle">Estrai righe valide dai PDF e aggiungile in fondo al tuo file Excel.</div>',
     unsafe_allow_html=True,
 )
 
-uploaded_files = st.file_uploader(
-    "Carica uno o più PDF",
-    type=["pdf"],
-    accept_multiple_files=True
-)
+st.write("### 1. Carica i file")
 
-if uploaded_files:
-    st.success(f"Hai caricato {len(uploaded_files)} file. Quando sei pronto, clicca su **Estrai dati**.")
+col1, col2 = st.columns(2)
 
-    if st.button("Estrai dati da tutti i PDF"):
+with col1:
+    pdf_files = st.file_uploader(
+        "PDF (uno o più file)",
+        type=["pdf"],
+        accept_multiple_files=True,
+        help="File con elenco modelli / codici fiscali"
+    )
+
+with col2:
+    excel_file = st.file_uploader(
+        "File Excel base (Cartel1.xlsx)",
+        type=["xlsx"],
+        help="Verrà usato come base e aggiornato con nuove righe"
+    )
+
+extracted_rows = None
+
+st.write("---")
+st.write("### 2. Estrai dati dai PDF")
+
+if st.button("Estrai righe valide dai PDF"):
+    if not pdf_files:
+        st.warning("Carica almeno un PDF prima di estrarre i dati.")
+    elif not excel_file:
+        st.warning("Carica il file Excel base (Cartel1.xlsx) prima di procedere.")
+    else:
         all_rows = []
-        with st.spinner("Estrazione in corso, attendi qualche secondo..."):
-            for f in uploaded_files:
+        with st.spinner("Estrazione in corso..."):
+            for f in pdf_files:
                 righe = estrai_righe_validi(f)
-                for r in righe:
-                    r["nome_file"] = f.name
                 all_rows.extend(righe)
 
         if not all_rows:
-            st.warning("Nessuna riga trovata con codice fiscale a 11/16 caratteri nei file caricati.")
+            st.warning("Nessuna riga con codice fiscale (11/16 caratteri) trovata nei PDF caricati.")
         else:
-            st.success(f"Estrazione completata! Trovate {len(all_rows)} righe valide.")
+            extracted_rows = all_rows
+            st.success(f"Estrazione completata: trovate {len(all_rows)} righe valide.")
 
-            st.subheader("Risultati estratti")
+            # Riepilogo sintetico
+            st.write("#### Riepilogo righe da aggiungere")
+            st.write("Vedrai un elenco compatto delle nuove righe che verranno inserite in fondo all'Excel:")
 
-            cols_order = [
-                "nome_file",
-                "pagina",
-                "codice_fiscale",
-                "nominativo",
-                "gruppo_riferimento",
-                "regime_contabile",
-                "codice_ditta",
-                "anno",
-                "tipo_f24",
-                "quantita_f24_inviati",
-            ]
-
-            normalized_rows = []
+            # Mostra solo uno snapshot testuale, non una grande tabella
+            preview_lines = []
             for r in all_rows:
-                nr = {}
-                for c in cols_order:
-                    nr[c] = r.get(c, "")
-                normalized_rows.append(nr)
+                line = (
+                    f"Anno={r.get('Anno', '')} | "
+                    f"Cod_Fisc={r.get('Cod_Fisc', '')} | "
+                    f"Denominazione={r.get('Denominazione', '')} | "
+                    f"Gruppo={r.get('gruppo_riferimento', '')} | "
+                    f"Regime={r.get('regime_contabile', '')} | "
+                    f"Cod_ditta={r.get('Codice_ditta', '')} | "
+                    f"Tipo={r.get('Tipo', '')}"
+                )
+                preview_lines.append(line)
 
-            st.dataframe(
-                normalized_rows,
-                use_container_width=True,
-            )
+            # Per non inondare, mostra tutte ma in un expander scrollabile
+            with st.expander("Mostra elenco completo delle righe che verranno aggiunte", expanded=True):
+                for line in preview_lines:
+                    st.text(line)
 
-            with st.expander("Vedi output JSON (per debug)", expanded=False):
-                st.json(normalized_rows)
+            # Salviamo nelle session_state per usarlo nel passo 3
+            st.session_state["extracted_rows"] = all_rows
+            st.session_state["excel_file_bytes"] = excel_file.read()
+
+st.write("---")
+st.write("### 3. Conferma e scarica l'Excel aggiornato")
+
+if "extracted_rows" in st.session_state and "excel_file_bytes" in st.session_state:
+    if st.button("Conferma e scarica"):
+        # Carica l'Excel base in DataFrame (Foglio1)
+        base_bytes = st.session_state["excel_file_bytes"]
+        base_buffer = io.BytesIO(base_bytes)
+        xls = pd.ExcelFile(base_buffer)
+        df_base = pd.read_excel(xls, sheet_name="Foglio1")
+
+        # Converte le righe estratte in DataFrame con le stesse colonne
+        nuovi_df = pd.DataFrame(st.session_state["extracted_rows"])
+        # Riordino le colonne per sicurezza
+        nuovi_df = nuovi_df[["Anno", "Cod_Fisc", "Denominazione",
+                             "gruppo_riferimento", "regime_contabile",
+                             "Codice_ditta", "Tipo"]]
+
+        # Aggiungi in fondo
+        df_aggiornato = pd.concat([df_base, nuovi_df], ignore_index=True)
+
+        # Scrivi su un nuovo Excel in memoria, preservando anche Foglio2
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            # Scrivi Foglio1 aggiornato
+            df_aggiornato.to_excel(writer, sheet_name="Foglio1", index=False)
+
+            # Copia eventuali altri fogli (es. Foglio2) se presenti
+            for sheet_name in xls.sheet_names:
+                if sheet_name == "Foglio1":
+                    continue
+                df_other = pd.read_excel(xls, sheet_name=sheet_name)
+                df_other.to_excel(writer, sheet_name=sheet_name, index=False)
+
+        output.seek(0)
+
+        st.success("File Excel aggiornato pronto per il download.")
+        st.download_button(
+            label="Scarica file Excel aggiornato",
+            data=output,
+            file_name="Cartel1_aggiornato.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 else:
-    st.info("Carica almeno un PDF per iniziare.")
-
-st.markdown('</div>', unsafe_allow_html=True)
+    st.info("Prima estrai i dati dai PDF e verifica il riepilogo, poi potrai confermare e scaricare l'Excel aggiornato.")
+    
+st.markdown("</div></div>", unsafe_allow_html=True)
