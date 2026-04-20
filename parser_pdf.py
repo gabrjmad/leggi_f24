@@ -15,9 +15,9 @@ def is_cf_like(text: str) -> bool:
 def parse_riga_tokens(tokens: List[str]) -> Dict[str, str]:
     """
     tokens: lista di parole della riga, già ordinate da sinistra a destra.
-    Ritorna un dict strutturato con i campi richiesti.
-    Si assume il formato:
-    CF NOME COGNOME ... 0600 B 55418 2026 04 01 01 IT 59 P 01030 03005 000000454165 762,04
+    Usa solo i campi fino a 'quantita_f24_inviati' e ignora il resto.
+    Formato atteso (semplificato):
+    CF NOME COGNOME ... 0600 B 55418 2026 04 01 01 [altri dati che ignoriamo...]
     """
     if not tokens:
         return {}
@@ -25,30 +25,20 @@ def parse_riga_tokens(tokens: List[str]) -> Dict[str, str]:
     cf = tokens[0]
 
     # Trova l'indice in cui inizia il blocco numerico "0600" (gruppo)
-    # cioè il primo token dopo il CF che è tutto numerico
     idx = 1
     while idx < len(tokens) and not re.fullmatch(r"\d+", tokens[idx]):
         idx += 1
 
-    # tutto ciò che sta tra CF e il primo blocco numerico è nominativo
+    # Nominativo = tutto tra CF e il primo blocco numerico (0600)
     nominativo = " ".join(tokens[1:idx]).strip()
 
-    # ora ci aspettiamo i campi in ordine fisso
-    # idx -> gruppo di riferimento (0600)
+    # Campi in ordine fisso dopo il nominativo
     gruppo_rif = tokens[idx] if idx < len(tokens) else ""
     regime_contabile = tokens[idx + 1] if idx + 1 < len(tokens) else ""
     codice_ditta = tokens[idx + 2] if idx + 2 < len(tokens) else ""
     anno = tokens[idx + 3] if idx + 3 < len(tokens) else ""
     tipo_f24 = tokens[idx + 4] if idx + 4 < len(tokens) else ""
     quantita_f24 = tokens[idx + 5] if idx + 5 < len(tokens) else ""
-    documenti_contenuti = tokens[idx + 6] if idx + 6 < len(tokens) else ""
-
-    # saldo = ultimo token che assomiglia a importo tipo 762,04
-    saldo = ""
-    for t in reversed(tokens):
-        if re.fullmatch(r"\d{1,3}(\.\d{3})*,\d{2}", t) or re.fullmatch(r"\d+,\d{2}", t):
-            saldo = t
-            break
 
     return {
         "codice_fiscale": cf,
@@ -59,15 +49,13 @@ def parse_riga_tokens(tokens: List[str]) -> Dict[str, str]:
         "anno": anno,
         "tipo_f24": tipo_f24,
         "quantita_f24_inviati": quantita_f24,
-        "documenti_contenuti": documenti_contenuti,
-        "saldo": saldo,
     }
 
 
 def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
     """
     pdf_fp può essere un path (stringa) o un file-like object (es. Streamlit upload).
-    Restituisce una lista di dict con tutti i campi estratti per ogni riga valida.
+    Restituisce una lista di dict con i campi estratti per ogni riga valida.
     """
     risultati = []
 
@@ -82,7 +70,6 @@ def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
                 righe.setdefault(top, []).append(w)
 
             for top, parole in righe.items():
-                # ordina parole da sinistra a destra
                 parole_ordinate = sorted(parole, key=lambda x: x["x0"])
                 tokens = [p["text"] for p in parole_ordinate]
                 first_word = tokens[0]
@@ -91,13 +78,10 @@ def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
                 if not is_cf_like(first_word):
                     continue
 
-                # parsa la riga in colonne
                 campi = parse_riga_tokens(tokens)
 
-                # aggiungi info di contesto (pagina, posizioni, riga originale)
+                # aggiungi info di contesto minime
                 campi["pagina"] = page.page_number
-                campi["y_top"] = top
-                campi["riga_completa"] = " ".join(tokens)
 
                 risultati.append(campi)
 
