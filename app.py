@@ -7,7 +7,7 @@ from parser_pdf import estrai_righe_validi
 
 st.set_page_config(page_title="Estrai il tuo PDF", layout="wide")
 
-# Stile leggero ma leggibile
+# Stile leggero ma leggibile + titolo integrato nel container
 st.markdown(
     """
     <style>
@@ -17,26 +17,60 @@ st.markdown(
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     .main-container {
+        position: relative;
         background-color: rgba(15, 23, 42, 0.96);
-        padding: 1.5rem 2rem;
+        padding: 1.8rem 2.2rem 2.2rem 2.2rem;
         border-radius: 1rem;
         border: 1px solid rgba(148, 163, 184, 0.5);
         box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
         max-width: 900px;
         margin: 2rem auto;
+        overflow: hidden;
+    }
+    /* Forme di sfondo integrate nel titolo */
+    .main-container::before,
+    .main-container::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(24px);
+        opacity: 0.3;
+        z-index: 0;
+    }
+    .main-container::before {
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle, #38bdf8, #6366f1);
+        top: -80px;
+        left: -40px;
+    }
+    .main-container::after {
+        width: 260px;
+        height: 260px;
+        background: radial-gradient(circle, #a855f7, #3b82f6);
+        top: -100px;
+        right: -60px;
+    }
+    .header-wrapper {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        margin-bottom: 1.8rem;
     }
     .app-title {
+        display: inline-block;
+        padding: 0.5rem 1.4rem;
+        border-radius: 999px;
+        background-color: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.7);
         font-size: 1.8rem;
-        margin-bottom: 0.5rem;
         color: #f9fafb;
         font-weight: 700;
-        text-align: center;
     }
     .app-subtitle {
         font-size: 0.95rem;
         color: #cbd5f5;
-        text-align: center;
-        margin-bottom: 1.5rem;
+        margin-top: 0.4rem;
     }
     .stFileUploader {
         background-color: #020617;
@@ -76,7 +110,12 @@ st.markdown(
         font-weight: 600;
         color: #e5e7eb;
         margin-top: 1rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.2rem;
+    }
+    .summary-count {
+        font-size: 0.9rem;
+        color: #a5b4fc;
+        margin-bottom: 0.6rem;
     }
     </style>
     """,
@@ -85,9 +124,15 @@ st.markdown(
 
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-st.markdown('<div class="app-title">Estrai il tuo PDF</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="app-subtitle">Carica uno o più PDF con i dati F24 e genera un file Excel con le righe estratte.</div>',
+    """
+    <div class="header-wrapper">
+        <div class="app-title">Estrai il tuo PDF</div>
+        <div class="app-subtitle">
+            Carica uno o più PDF con i dati F24 e genera un file Excel con le righe estratte.
+        </div>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
@@ -122,8 +167,12 @@ if estrai_clicked:
             # Salva in session_state per fase successiva
             st.session_state["extracted_rows"] = all_rows
 
-            # Riepilogo
-            st.markdown('<div class="summary-title">Riepilogo righe che verranno inserite nel file Excel:</div>', unsafe_allow_html=True)
+            # Riepilogo: solo numero + elenco
+            st.markdown('<div class="summary-title">Righe individuate</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="summary-count">Totale: <strong>{len(all_rows)}</strong></div>',
+                unsafe_allow_html=True,
+            )
             st.markdown('<div class="summary-box">', unsafe_allow_html=True)
             for r in all_rows:
                 line = (
@@ -138,15 +187,10 @@ if estrai_clicked:
                 st.text(line)
             st.markdown('</div>', unsafe_allow_html=True)
 
-# 3) Conferma e scarica
+# 3) Genera subito e scarica (senza tasto Conferma)
 if "extracted_rows" in st.session_state:
-    st.write("")
-    confirm_col = st.columns(3)
-    with confirm_col[1]:
-        conferma_clicked = st.button("Conferma")
-
-    if conferma_clicked:
-        rows = st.session_state["extracted_rows"]
+    rows = st.session_state["extracted_rows"]
+    if rows:
         df = pd.DataFrame(rows)
 
         df_excel = pd.DataFrame({
