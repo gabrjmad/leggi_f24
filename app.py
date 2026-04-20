@@ -5,46 +5,60 @@ import streamlit as st
 
 from parser_pdf import estrai_righe_validi
 
-st.set_page_config(page_title="Estrazione F24", layout="wide")
+st.set_page_config(page_title="Estrai il tuo PDF", layout="wide")
 
-# Stile base ma leggibile (come versione funzionante)
+# CSS: niente box in alto, layout centrato, riepilogo con sfondo chiaro
 st.markdown(
     """
     <style>
     .stApp {
-        background: radial-gradient(circle at top, #1d4ed8 0, #020617 55%);
-        color: #e5e7eb;
+        background: radial-gradient(circle at top, #2563eb 0, #0f172a 55%);
+        color: #0f172a;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .main-container {
-        background-color: rgba(15, 23, 42, 0.96);
-        padding: 1.5rem 2rem;
+
+    .center-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        padding-top: 3rem;
+    }
+
+    .card {
+        background-color: #f9fafb;
+        padding: 2rem 2.5rem;
         border-radius: 1rem;
-        border: 1px solid rgba(148, 163, 184, 0.5);
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
-        max-width: 1100px;
-        margin: 2rem auto;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
+        max-width: 800px;
+        width: 100%;
     }
+
     .app-title {
-        font-size: 1.7rem;
-        margin-bottom: 0.3rem;
-        color: #f9fafb;
-        font-weight: 650;
-        text-align: left;
+        font-size: 1.8rem;
+        margin-bottom: 0.75rem;
+        color: #0f172a;
+        font-weight: 700;
+        text-align: center;
     }
+
     .app-subtitle {
         font-size: 0.95rem;
-        color: #c7d2fe;
-        margin-bottom: 1rem;
+        color: #4b5563;
+        text-align: center;
+        margin-bottom: 1.5rem;
     }
+
+    /* Bottoni centrali */
     .stButton>button {
         background: linear-gradient(135deg, #6366f1, #3b82f6);
         color: #f9fafb;
         border-radius: 999px;
-        padding: 0.4rem 1.4rem;
+        padding: 0.45rem 1.7rem;
         border: none;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         cursor: pointer;
         box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
     }
@@ -52,67 +66,71 @@ st.markdown(
         background: linear-gradient(135deg, #818cf8, #60a5fa);
         box-shadow: 0 10px 25px rgba(59, 130, 246, 0.7);
     }
+
+    /* File uploader grande e centrato */
     .stFileUploader {
-        background-color: #020617;
-        padding: 0.9rem;
+        background-color: #e5e7eb;
+        padding: 1rem;
+        border-radius: 0.9rem;
+        border: 1px dashed rgba(107, 114, 128, 0.9);
+        color: #111827;
+    }
+
+    /* Riepilogo con sfondo schiarito */
+    .summary-box {
+        background-color: #f3f4f6;
         border-radius: 0.75rem;
-        border: 1px dashed rgba(148, 163, 184, 0.8);
-        color: #e5e7eb;
+        padding: 1rem 1.2rem;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        max-height: 260px;
+        overflow-y: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.8rem;
+        color: #111827;
+    }
+
+    .summary-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 0.5rem;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="main-container">', unsafe_allow_html=True)
+st.markdown('<div class="center-wrapper"><div class="card">', unsafe_allow_html=True)
 
-st.markdown('<div class="app-title">Estrazione dati F24 da PDF</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-title">Estrai il tuo PDF</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="app-subtitle">Carica uno o più PDF e un file Excel base (Cartel1.xlsx). '
-    'Le righe estratte verranno aggiunte in fondo al Foglio1.</div>',
+    '<div class="app-subtitle">Carica uno o più PDF con i dati F24 e genera un file Excel con le righe estratte.</div>',
     unsafe_allow_html=True,
 )
 
-col1, col2 = st.columns(2)
+# Upload PDF centrato
+pdf_files = st.file_uploader(
+    "Carica uno o più PDF",
+    type=["pdf"],
+    accept_multiple_files=True
+)
 
-with col1:
-    uploaded_files = st.file_uploader(
-        "Carica uno o più PDF",
-        type=["pdf"],
-        accept_multiple_files=True
-    )
+st.write("")
+st.write("")
 
-with col2:
-    excel_file = st.file_uploader(
-        "Carica file Excel base (Cartel1.xlsx)",
-        type=["xlsx"],
-        help="Verrà usato come base per aggiungere le nuove righe"
-    )
+# Bottone per estrarre, al centro
+extract_col = st.columns(3)
+with extract_col[1]:
+    estrai_clicked = st.button("Estrai dati dai PDF")
 
-st.write("---")
-st.write("### 1. Estrai i dati dai PDF")
-
-if uploaded_files and excel_file:
-    st.success(f"Hai caricato {len(uploaded_files)} PDF e un file Excel. Premi **Estrai dati** per procedere.")
-elif uploaded_files and not excel_file:
-    st.info("Hai caricato dei PDF. Carica anche il file Excel base per poter aggiornare i dati.")
-elif excel_file and not uploaded_files:
-    st.info("Hai caricato il file Excel base. Carica almeno un PDF per estrarre i dati.")
-else:
-    st.info("Carica almeno un PDF e il file Excel base per iniziare.")
-
-if st.button("Estrai dati da tutti i PDF"):
-    if not uploaded_files:
+if estrai_clicked:
+    if not pdf_files:
         st.warning("Carica almeno un PDF prima di estrarre i dati.")
-    elif not excel_file:
-        st.warning("Carica il file Excel base (Cartel1.xlsx) prima di estrarre i dati.")
     else:
         all_rows = []
         with st.spinner("Estrazione in corso..."):
-            for f in uploaded_files:
+            for f in pdf_files:
                 righe = estrai_righe_validi(f)
-                for r in righe:
-                    r["nome_file"] = f.name
                 all_rows.extend(righe)
 
         if not all_rows:
@@ -120,35 +138,13 @@ if st.button("Estrai dati da tutti i PDF"):
         else:
             st.success(f"Estrazione completata! Trovate {len(all_rows)} righe valide.")
 
-            # Salva in session_state per il passo successivo (riepilogo+Excel)
+            # Salva in session_state per conferma e generazione Excel
             st.session_state["extracted_rows"] = all_rows
-            # Leggiamo il file Excel una sola volta e memorizziamo i bytes
-            st.session_state["excel_base_bytes"] = excel_file.read()
 
-            # Tabella (utile per verificare che la logica funzioni ancora)
-            cols_order = [
-                "nome_file",
-                "pagina",
-                "codice_fiscale",
-                "nominativo",
-                "gruppo_riferimento",
-                "regime_contabile",
-                "codice_ditta",
-                "anno",
-                "tipo_f24",
-                "quantita_f24_inviati",
-            ]
-            normalized_rows = []
-            for r in all_rows:
-                nr = {c: r.get(c, "") for c in cols_order}
-                normalized_rows.append(nr)
+            # Riepilogo visibile con sfondo chiaro
+            st.markdown('<div class="summary-title">Riepilogo righe che verranno inserite nel file Excel:</div>', unsafe_allow_html=True)
+            st.markdown('<div class="summary-box">', unsafe_allow_html=True)
 
-            st.write("Tabella di controllo dei dati estratti (per verifica):")
-            st.dataframe(normalized_rows, use_container_width=True)
-
-            # Riepilogo sintetico delle righe che andranno in Excel
-            st.write("#### Riepilogo righe che verranno aggiunte al Foglio1 dell'Excel:")
-            preview_lines = []
             for r in all_rows:
                 line = (
                     f"Anno={r.get('anno', '')} | "
@@ -159,66 +155,50 @@ if st.button("Estrai dati da tutti i PDF"):
                     f"Cod_ditta={r.get('codice_ditta', '')} | "
                     f"Tipo={r.get('tipo_f24', '')}"
                 )
-                preview_lines.append(line)
-
-            for line in preview_lines:
                 st.text(line)
 
-st.write("---")
-st.write("### 2. Conferma e scarica il file Excel aggiornato")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-if "extracted_rows" in st.session_state and "excel_base_bytes" in st.session_state:
-    if st.button("Conferma e scarica"):
-        # Carichiamo l'Excel base
-        base_bytes = st.session_state["excel_base_bytes"]
-        base_buffer = io.BytesIO(base_bytes)
-        xls = pd.ExcelFile(base_buffer)
+# Se abbiamo righe estratte, mostra bottone Conferma
+if "extracted_rows" in st.session_state:
+    st.write("")
+    st.write("")
 
-        # Foglio1 esistente
-        df_base = pd.read_excel(xls, sheet_name="Foglio1")
+    confirm_col = st.columns(3)
+    with confirm_col[1]:
+        conferma_clicked = st.button("Conferma")
 
-        # Nuove righe dai PDF, mappate nell'ordine richiesto da Cartel1.xlsx
-        nuovi = st.session_state["extracted_rows"]
-        df_nuovi = pd.DataFrame(nuovi)
+    if conferma_clicked:
+        # Costruisci DataFrame con intestazione stile Cartel1
+        rows = st.session_state["extracted_rows"]
+        df = pd.DataFrame(rows)
 
-        # Selezioniamo e rinominiamo le colonne per matchare l'Excel:
-        # Anno, Cod_Fisc, Denominazione, gruppo_riferimento, regime_contabile, Codice_ditta, Tipo
-        df_nuovi_excel = pd.DataFrame({
-            "Anno": df_nuovi.get("anno", ""),
-            "Cod_Fisc": df_nuovi.get("codice_fiscale", ""),
-            "Denominazione": df_nuovi.get("nominativo", ""),
-            "gruppo_riferimento": df_nuovi.get("gruppo_riferimento", ""),
-            "regime_contabile": df_nuovi.get("regime_contabile", ""),
-            "Codice_ditta": df_nuovi.get("codice_ditta", ""),
-            "Tipo": df_nuovi.get("tipo_f24", ""),
+        df_excel = pd.DataFrame({
+            "Anno": df.get("anno", ""),
+            "Cod_Fisc": df.get("codice_fiscale", ""),
+            "Denominazione": df.get("nominativo", ""),
+            "gruppo_riferimento": df.get("gruppo_riferimento", ""),
+            "regime_contabile": df.get("regime_contabile", ""),
+            "Codice_ditta": df.get("codice_ditta", ""),
+            "Tipo": df.get("tipo_f24", ""),
         })
 
-        # Append in fondo
-        df_aggiornato = pd.concat([df_base, df_nuovi_excel], ignore_index=True)
-
-        # Scriviamo un nuovo Excel in memoria, preservando gli altri fogli
+        # Scrivi il nuovo Excel in memoria
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            # Foglio1 aggiornato
-            df_aggiornato.to_excel(writer, sheet_name="Foglio1", index=False)
-
-            # Copia altri fogli (es. Foglio2) se presenti
-            for sheet_name in xls.sheet_names:
-                if sheet_name == "Foglio1":
-                    continue
-                df_other = pd.read_excel(xls, sheet_name=sheet_name)
-                df_other.to_excel(writer, sheet_name=sheet_name, index=False)
-
+            df_excel.to_excel(writer, sheet_name="Foglio1", index=False)
         output.seek(0)
 
-        st.success("File Excel aggiornato pronto per il download.")
-        st.download_button(
-            label="Scarica file Excel aggiornato",
-            data=output,
-            file_name="Cartel1_aggiornato.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-else:
-    st.info("Per abilitare il download devi prima estrarre i dati dai PDF e vedere il riepilogo.")
+        st.success("File Excel generato. Ora puoi scaricarlo.")
 
-st.markdown('</div>', unsafe_allow_html=True)
+        # Bottone di download
+        download_col = st.columns(3)
+        with download_col[1]:
+            st.download_button(
+                label="Scarica file Excel",
+                data=output,
+                file_name="Cartel1_estratto.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+st.markdown("</div></div>", unsafe_allow_html=True)
