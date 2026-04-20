@@ -15,47 +15,48 @@ def is_cf_like(text: str) -> bool:
 def parse_riga_tokens(tokens: List[str]) -> Dict[str, str]:
     """
     tokens: lista di parole della riga, già ordinate da sinistra a destra.
-    Usa solo i campi fino a 'quantita_f24_inviati' e ignora il resto.
+    Mappa la riga nei 7 campi che servono per l'Excel:
+
+    Anno | Cod_Fisc | Denominazione | gruppo_riferimento | regime_contabile | Codice_ditta | Tipo
+
     Formato atteso (semplificato):
-    CF NOME COGNOME ... 0600 B 55418 2026 04 01 01 [altri dati che ignoriamo...]
+    CF NOME COGNOME ... 0600 B 55418 2026 04 01 01 ...
     """
     if not tokens:
         return {}
 
     cf = tokens[0]
 
-    # Trova l'indice in cui inizia il blocco numerico "0600" (gruppo)
+    # 1) Trova indice del gruppo_riferimento (es. "0600")
     idx = 1
     while idx < len(tokens) and not re.fullmatch(r"\d+", tokens[idx]):
         idx += 1
 
-    # Nominativo = tutto tra CF e il primo blocco numerico (0600)
-    nominativo = " ".join(tokens[1:idx]).strip()
+    # 2) Denominazione (nominativo) = tutto tra CF e il primo blocco numerico
+    denominazione = " ".join(tokens[1:idx]).strip()
 
-    # Campi in ordine fisso dopo il nominativo
+    # 3) Estrazione campi successivi
     gruppo_rif = tokens[idx] if idx < len(tokens) else ""
     regime_contabile = tokens[idx + 1] if idx + 1 < len(tokens) else ""
     codice_ditta = tokens[idx + 2] if idx + 2 < len(tokens) else ""
     anno = tokens[idx + 3] if idx + 3 < len(tokens) else ""
     tipo_f24 = tokens[idx + 4] if idx + 4 < len(tokens) else ""
-    quantita_f24 = tokens[idx + 5] if idx + 5 < len(tokens) else ""
 
     return {
-        "codice_fiscale": cf,
-        "nominativo": nominativo,
+        "Anno": anno,
+        "Cod_Fisc": cf,
+        "Denominazione": denominazione,
         "gruppo_riferimento": gruppo_rif,
         "regime_contabile": regime_contabile,
-        "codice_ditta": codice_ditta,
-        "anno": anno,
-        "tipo_f24": tipo_f24,
-        "quantita_f24_inviati": quantita_f24,
+        "Codice_ditta": codice_ditta,
+        "Tipo": tipo_f24,
     }
 
 
 def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
     """
     pdf_fp può essere un path (stringa) o un file-like object (es. Streamlit upload).
-    Restituisce una lista di dict con i campi estratti per ogni riga valida.
+    Restituisce una lista di dict con i 7 campi necessari per l'Excel.
     """
     risultati = []
 
@@ -69,7 +70,7 @@ def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
                 top = round(w["top"])
                 righe.setdefault(top, []).append(w)
 
-            for top, parole in righe.items():
+            for _, parole in righe.items():
                 parole_ordinate = sorted(parole, key=lambda x: x["x0"])
                 tokens = [p["text"] for p in parole_ordinate]
                 first_word = tokens[0]
@@ -79,10 +80,6 @@ def estrai_righe_validi(pdf_fp: Union[str, IO]) -> List[Dict[str, str]]:
                     continue
 
                 campi = parse_riga_tokens(tokens)
-
-                # aggiungi info di contesto minime
-                campi["pagina"] = page.page_number
-
                 risultati.append(campi)
 
     return risultati
