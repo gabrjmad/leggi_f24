@@ -1,110 +1,116 @@
 import io
+import os
 
 import pandas as pd
 import streamlit as st
 
-from parser_pdf import estrai_righe_validi
+from parser_pdf import estrai_righe_validi  # NON modifichiamo questo file
+
+# Nome del file archivio unico
+ARCHIVE_FILE = "Conto_f24_inviati.xlsx"
 
 st.set_page_config(page_title="Estrai il tuo PDF", layout="wide")
 
-# Stile leggero ma leggibile + titolo integrato nel container
+# ========== STILE ==========
+
 st.markdown(
     """
     <style>
     .stApp {
-        background: radial-gradient(circle at top, #2563eb 0, #0f172a 60%);
+        background: radial-gradient(circle at top, #1d4ed8 0, #020617 60%);
         color: #e5e7eb;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     .main-container {
         position: relative;
-        background-color: rgba(15, 23, 42, 0.96);
-        padding: 1.8rem 2.2rem 2.2rem 2.2rem;
-        border-radius: 1rem;
+        background: linear-gradient(90deg, #020617 0%, #020617 30%, #020617 70%, #020617 100%);
+        padding: 2.0rem 2.6rem 2.4rem 2.6rem;
+        border-radius: 1.2rem;
         border: 1px solid rgba(148, 163, 184, 0.5);
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
-        max-width: 900px;
-        margin: 2rem auto;
-        overflow: hidden;
+        box-shadow: 0 22px 60px rgba(15, 23, 42, 0.95);
+        max-width: 920px;
+        margin: 2.5rem auto;
     }
-    /* Forme di sfondo integrate nel titolo */
-    .main-container::before,
-    .main-container::after {
-        content: "";
-        position: absolute;
-        border-radius: 999px;
-        filter: blur(24px);
-        opacity: 0.3;
-        z-index: 0;
-    }
-    .main-container::before {
-        width: 220px;
-        height: 220px;
-        background: radial-gradient(circle, #38bdf8, #6366f1);
-        top: -80px;
-        left: -40px;
-    }
-    .main-container::after {
-        width: 260px;
-        height: 260px;
-        background: radial-gradient(circle, #a855f7, #3b82f6);
-        top: -100px;
-        right: -60px;
-    }
-    .header-wrapper {
-        position: relative;
-        z-index: 1;
+    .title-wrapper {
         text-align: center;
-        margin-bottom: 1.8rem;
+        margin-bottom: 1.4rem;
     }
-    .app-title {
+    .app-title-bar {
         display: inline-block;
-        padding: 0.5rem 1.4rem;
+        width: 100%;
+        max-width: 800px;
+        padding: 0.9rem 1.4rem;
         border-radius: 999px;
-        background-color: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(148, 163, 184, 0.7);
-        font-size: 1.8rem;
-        color: #f9fafb;
-        font-weight: 700;
-    }
-    .app-subtitle {
-        font-size: 0.95rem;
-        color: #cbd5f5;
-        margin-top: 0.4rem;
-    }
-    .stFileUploader {
-        background-color: #020617;
-        padding: 1rem;
-        border-radius: 0.9rem;
-        border: 1px dashed rgba(148, 163, 184, 0.9);
+        background: linear-gradient(90deg, #0f172a 0%, #020617 50%, #111827 100%);
+        border: 1px solid rgba(148, 163, 184, 0.5);
         color: #e5e7eb;
+        font-size: 1.2rem;
+        font-weight: 500;
+        text-align: center;
+    }
+    .app-title-text {
+        font-size: 1.15rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    .upload-area {
+        margin-top: 1.4rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .upload-label {
+        font-size: 0.9rem;
+        color: #cbd5f5;
+    }
+    .stFileUploader > div > div {
+        border-radius: 999px !important;
+        background-color: #f9fafb !important;
+        color: #111827 !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 0.5rem 1rem !important;
+    }
+    .stFileUploader label {
+        display: none !important;
+    }
+    .upload-help {
+        font-size: 0.8rem;
+        color: #e5e7eb;
+        opacity: 0.8;
     }
     .stButton>button {
-        background: linear-gradient(135deg, #6366f1, #3b82f6);
+        background: #0f172a;
         color: #f9fafb;
         border-radius: 999px;
-        padding: 0.45rem 1.7rem;
-        border: none;
+        padding: 0.55rem 1.9rem;
+        border: 1px solid #1d4ed8;
         font-weight: 600;
         font-size: 0.95rem;
         cursor: pointer;
-        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.8);
     }
     .stButton>button:hover {
-        background: linear-gradient(135deg, #818cf8, #60a5fa);
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.7);
+        background: #1d4ed8;
+        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.8);
     }
-    .summary-title {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: #e5e7eb;
-        margin-top: 1rem;
-        margin-bottom: 0.2rem;
-    }
-    .summary-count {
+    .feedback-text {
         font-size: 0.9rem;
         color: #a5b4fc;
-        margin-bottom: 0.6rem;
+        margin-top: 0.8rem;
+    }
+    .divider {
+        margin: 1.7rem 0 0.7rem 0;
+        border-top: 1px solid rgba(148, 163, 184, 0.5);
+    }
+    .section-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+    }
+    .small-label {
+        font-size: 0.8rem;
+        margin-bottom: 0.15rem;
     }
     </style>
     """,
@@ -115,28 +121,130 @@ st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
 st.markdown(
     """
-    <div class="header-wrapper">
-        <div class="app-title">Estrai il tuo PDF</div>
-        <div class="app-subtitle">
-            Carica uno o più PDF con i dati F24 e genera un file Excel con le righe estratte.
+    <div class="title-wrapper">
+        <div class="app-title-bar">
+            <span class="app-title-text">Estrai il tuo PDF</span>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-# 1) Upload PDF
+# ========== FUNZIONI DI SUPPORTO ==========
+
+def carica_archivio(path: str) -> pd.DataFrame:
+    """Carica il file archivio se esiste, altrimenti restituisce un DataFrame vuoto con le colonne standard."""
+    if os.path.exists(path):
+        return pd.read_excel(path)
+    # colonne standard come da tuo esempio
+    return pd.DataFrame(
+        columns=[
+            "Anno",
+            "Cod_Fisc",
+            "Denominazione",
+            "gruppo_riferimento",
+            "regime_contabile",
+            "Codice_ditta",
+            "Tipo",
+        ]
+    )
+
+
+def aggiorna_archivio_con_nuove_righe(path: str, nuove_righe: list[dict]) -> pd.DataFrame:
+    """
+    Unisce le nuove righe estratte dall'upload con l'archivio esistente
+    e salva il file aggiornato.
+    """
+    df_archivio = carica_archivio(path)
+    if not nuove_righe:
+        return df_archivio
+
+    df_nuove = pd.DataFrame(nuove_righe)
+
+    # Garantiamo le colonne nell'ordine desiderato
+    colonne = [
+        "Anno",
+        "Cod_Fisc",
+        "Denominazione",
+        "gruppo_riferimento",
+        "regime_contabile",
+        "Codice_ditta",
+        "Tipo",
+    ]
+    df_nuove = df_nuove.reindex(columns=colonne)
+
+    df_aggiornato = pd.concat([df_archivio, df_nuove], ignore_index=True)
+
+    df_aggiornato.to_excel(path, index=False)
+    return df_aggiornato
+
+
+def get_nominativi(df_archivio: pd.DataFrame) -> list[str]:
+    """Restituisce la lista di denominazioni uniche, ordinate."""
+    if df_archivio.empty:
+        return []
+    nomi = (
+        df_archivio["Denominazione"]
+        .astype(str)
+        .str.strip()
+        .replace("nan", "")
+        .unique()
+        .tolist()
+    )
+    nomi = [n for n in nomi if n]
+    nomi.sort()
+    return nomi
+
+
+def conta_f24(df_archivio: pd.DataFrame, nominativo: str, tipo: str | None, anno: str | None) -> int:
+    """Conta quante righe ci sono per nominativo (e opzionale tipo, anno)."""
+    if df_archivio.empty:
+        return 0
+
+    df = df_archivio.copy()
+    df["Denominazione"] = df["Denominazione"].astype(str).str.strip()
+    df["Anno"] = df["Anno"].astype(str).str.strip()
+    df["Tipo"] = df["Tipo"].astype(str).str.strip()
+
+    mask = df["Denominazione"] == nominativo
+
+    if anno:
+        mask &= df["Anno"] == anno
+
+    if tipo:
+        mask &= df["Tipo"] == tipo
+
+    return int(mask.sum())
+
+
+# ========== UI PRINCIPALE ==========
+
+# 1) Area upload
+st.markdown('<div class="upload-area">', unsafe_allow_html=True)
+
+st.markdown('<div class="upload-label">Carica uno o più PDF F24</div>', unsafe_allow_html=True)
+
 pdf_files = st.file_uploader(
-    "Carica uno o più PDF",
+    "",
     type=["pdf"],
-    accept_multiple_files=True
+    accept_multiple_files=True,
+    key="pdf_uploader",
 )
 
-# 2) Bottone per estrarre
-st.write("")
-center_col = st.columns(3)
-with center_col[1]:
+st.markdown(
+    '<div class="upload-help">Puoi trascinare i PDF qui sopra oppure cliccare per selezionarli.</div>',
+    unsafe_allow_html=True,
+)
+
+# Bottone centrale
+col_left, col_center, col_right = st.columns([1, 1, 1])
+with col_center:
     estrai_clicked = st.button("Estrai dati dai PDF")
+
+st.markdown("</div>", unsafe_allow_html=True)  # chiude upload-area
+
+righe_trovate = 0
+df_archivio = carica_archivio(ARCHIVE_FILE)
 
 if estrai_clicked:
     if not pdf_files:
@@ -148,51 +256,83 @@ if estrai_clicked:
                 righe = estrai_righe_validi(f)
                 all_rows.extend(righe)
 
-        if not all_rows:
-            st.warning("Nessuna riga trovata con codice fiscale a 11/16 caratteri nei PDF caricati.")
+        righe_trovate = len(all_rows)
+
+        if righe_trovate == 0:
+            st.warning("Nessuna riga trovata nei PDF caricati.")
         else:
-            st.success(f"Estrazione completata! Trovate {len(all_rows)} righe valide.")
+            # aggiorna archivio
+            df_archivio = aggiorna_archivio_con_nuove_righe(ARCHIVE_FILE, all_rows)
+            st.success(f"Estrazione completata! Righe trovate: {righe_trovate}.")
 
-            # Salva in session_state per fase successiva
-            st.session_state["extracted_rows"] = all_rows
+# Se abbiamo un archivio (anche solo pre-esistente), permetti il download
+if not df_archivio.empty:
+    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Scarica il file aggiornato</div>', unsafe_allow_html=True)
 
-            # Solo titolo e numero righe
-            st.markdown('<div class="summary-title">Righe individuate</div>', unsafe_allow_html=True)
-            st.markdown(
-                f'<div class="summary-count">Totale: <strong>{len(all_rows)}</strong></div>',
-                unsafe_allow_html=True,
-            )
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df_archivio.to_excel(writer, sheet_name="Archivio_F24", index=False)
+    buffer.seek(0)
 
-# 3) Genera subito e scarica (senza tasto Conferma)
-if "extracted_rows" in st.session_state:
-    rows = st.session_state["extracted_rows"]
-    if rows:
-        df = pd.DataFrame(rows)
+    st.download_button(
+        label="Scarica Conto_f24_inviati.xlsx",
+        data=buffer,
+        file_name=ARCHIVE_FILE,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
-        df_excel = pd.DataFrame({
-            "Anno": df.get("anno", ""),
-            "Cod_Fisc": df.get("codice_fiscale", ""),
-            "Denominazione": df.get("nominativo", ""),
-            "gruppo_riferimento": df.get("gruppo_riferimento", ""),
-            "regime_contabile": df.get("regime_contabile", ""),
-            "Codice_ditta": df.get("codice_ditta", ""),
-            "Tipo": df.get("tipo_f24", ""),
-        })
+# ========== SEZIONE FILTRO F24 ==========
 
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df_excel.to_excel(writer, sheet_name="Foglio1", index=False)
-        output.seek(0)
+if not df_archivio.empty:
+    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">Conta F24 inviati</div>',
+        unsafe_allow_html=True,
+    )
 
-        st.success("File Excel generato. Ora puoi scaricarlo.")
+    col1, col2, col3 = st.columns([2, 1, 1])
 
-        download_col = st.columns(3)
-        with download_col[1]:
-            st.download_button(
-                label="Scarica file Excel",
-                data=output,
-                file_name="Cartel1_estratto.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
+    nominativi = get_nominativi(df_archivio)
+    with col1:
+        st.markdown('<div class="small-label">Nominativo</div>', unsafe_allow_html=True)
+        nome_sel = st.selectbox(
+            "",
+            options=[""] + nominativi,
+            index=0,
+            format_func=lambda x: x if x != "" else "Seleziona un nominativo",
+        )
 
-st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div class="small-label">Tipo (opzionale)</div>', unsafe_allow_html=True)
+        tipo_input = st.text_input("", placeholder="Es. 4")
+
+    with col3:
+        st.markdown('<div class="small-label">Anno (opzionale)</div>', unsafe_allow_html=True)
+        anno_input = st.text_input("", placeholder="Es. 2026")
+
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
+    with col_btn2:
+        conta_clicked = st.button("Conta F24")
+
+    if conta_clicked:
+        if not nome_sel:
+            st.warning("Seleziona un nominativo prima di contare.")
+        else:
+            tipo_val = tipo_input.strip() if tipo_input.strip() else None
+            anno_val = anno_input.strip() if anno_input.strip() else None
+
+            totale = conta_f24(df_archivio, nome_sel, tipo_val, anno_val)
+
+            # Costruzione frase
+            parti = [f"F24 inviati da {nome_sel}"]
+            if tipo_val:
+                parti.append(f"di tipo {tipo_val}")
+            if anno_val:
+                parti.append(f"nell'anno {anno_val}")
+            frase_intro = " ".join(parti)
+            frase = f"{frase_intro} sono {totale}."
+
+            st.markdown(f'<div class="feedback-text">{frase}</div>', unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)  # chiude main-container
